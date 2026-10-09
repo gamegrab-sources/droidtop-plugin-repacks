@@ -124,7 +124,35 @@ class Repacks(unittest.TestCase):
         self.assertEqual(magnet["title"], "1337x")
         parts = [x for x in b if x["id"].startswith("web")]
         self.assertEqual([p["title"] for p in parts], ["Sample_Game.part1.rar", "Sample_Game.part2.rar"])
-        self.assertTrue(any(n["id"].startswith("parts-") for s in page["sections"] for n in s["items"]))
+        whole = [x for x in b if x["id"].startswith("parts-")][0]
+        self.assertEqual(whole["title"], "Download all 2 parts")
+        self.assertEqual(whole["action"]["op"], "acquireParts")
+
+    def test_all_parts_as_one_acquire(self):
+        ref = {"site": "fitgirl", "url": "https://fitgirl-repacks.site/sample-game/"}
+        opened = []
+
+        def capture(link):
+            opened.append(link)
+            name = link.split("#", 1)[1]
+            return {"url": "https://cdn.example/" + name, "fileName": name, "session": "w-00000000-0000-0000-0000-00000000000%d" % len(opened)}
+
+        self.host.captured = capture
+        result = job("library.sources", "acquireParts", {"ref": ref, "group": "FastHost"})
+        self.assertTrue(result["ok"], result)
+        downloads = json.loads(result["values"]["downloads"])
+        self.assertEqual([d["fileName"] for d in downloads], ["Sample_Game.part1.rar", "Sample_Game.part2.rar"])
+        self.assertEqual({d["unpack"] for d in downloads}, {"archive"})
+        self.assertEqual(len(opened), 2)
+        self.host.captured = lambda link: None
+        self.assertIn("Part 1 of 2", job("library.sources", "acquireParts", {"ref": ref, "group": "FastHost"})["error"])
+
+    def test_handoff(self):
+        uri = "magnet:?xt=urn:btih:AAE9343B427EF01A2C6DDDAE3F4CD04E0FC838DC"
+        self.assertEqual(job("library.sources", "handoff", {"uri": uri, "title": "x"})["values"]["message"], "Opened in your torrent app")
+        self.assertEqual(job("library.sources", "handoff", {"uri": "https://torrenthost.example/f1"})["values"]["message"], "Opened in your browser")
+        self.host.handoff = False
+        self.assertIn("view", job("library.sources", "handoff", {"uri": uri})["values"])
 
     def test_direct_link_download_through_the_web_view(self):
         ref = {"site": "fitgirl", "url": "https://fitgirl-repacks.site/sample-game/"}

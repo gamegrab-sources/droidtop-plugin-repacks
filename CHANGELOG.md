@@ -3,6 +3,18 @@
 Every working build of `main` is a release (`v<version>-<CI run>`); the
 declared version moves with every change to the plugin's sources.
 
+## 0.2.0
+
+- Torrents, release pages and DODI torrent-file pages open through
+  Android's chooser (droidtop's apps.view, permission "Open links in other
+  apps"); the link is shown to copy only when that is not possible, with
+  the reason.
+- Download all parts: a file host's numbered parts (up to 16) go through
+  droidtop's browser view one after another and come back as one download
+  (acquire `downloads`) into one folder; droidtop joins and unpacks
+  .7z.001-style parts and places .partN.rar volumes together (it does not
+  unpack split RAR files yet).
+
 ## 0.1.0
 
 - First version: FitGirl, DODI and ElAmigos in one plugin with a toggle per

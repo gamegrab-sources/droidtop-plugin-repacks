@@ -3,7 +3,7 @@
   "origin": "gamegrab",
   "label": "Repacks",
   "description": "Unofficial plugin from gamegrab-sources, not part of droidtop and not affiliated with FitGirl, DODI or ElAmigos. Finds their releases, tells you when a release you linked to a game has a new version, hands torrents to a torrent app you have installed (droidtop has no torrent client) and downloads direct links into your game folders.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "kind": "python",
   "contractVersion": 2,
   "requestsRoot": false,
@@ -69,6 +69,10 @@
     {
       "id": "library.folders.write",
       "reason": "Releases you download are placed in your game folder"
+    },
+    {
+      "id": "apps.view",
+      "reason": "Hands magnet links to a torrent app you have installed (droidtop has no torrent client) and opens release and torrent-file pages in your browser"
     }
   ]
 }

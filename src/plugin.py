@@ -352,7 +352,24 @@ WEB_NOTE = (
     "Opens the file host's page in droidtop's browser view. Go through its page (and any link "
     "check it shows) yourself; the download it starts runs in droidtop's Downloads into this game folder."
 )
-PARTS_NOTE = "This release comes in several parts: download every part into the same folder, then unpack the first."
+PARTS_NOTE = (
+    "This release comes in several parts. Download all parts opens each part's page in turn and runs them as one "
+    "download into one folder: droidtop joins and unpacks .7z.001-style parts, and places .partN.rar volumes "
+    "together for an app that can unpack them (droidtop cannot unpack split RAR files yet)."
+)
+SESSION_DENIED = (
+    'Allow "Use your signed-in session" for Repacks on its Permissions page: direct links open in '
+    "droidtop's browser view through it"
+)
+PARTS_TOO_MANY ="More parts than droidtop takes in one download (%d): download them one by one into the same folder."
+
+
+def part_members(members):
+    """The web options of one file host that are the numbered parts of one archive, in order; else []."""
+    web = [o for o in members if o["kind"] == "web"]
+    if len(web) < 2 or not gg.is_split_set([o["label"] for o in web]):
+        return []
+    return sorted(web, key=lambda o: gg.split_part(o["label"])[1])
 PAGE_NOTE = "A file host page that gives a .torrent file: it opens in another app (your browser), and the .torrent goes to a torrent app from there."
 
 
@@ -379,8 +396,18 @@ def detail_view(site, url, r):
     for g in groups[:8]:
         rows = []
         members = [o for o in web if o["group"] == g]
-        if len([o for o in members if o["kind"] == "web"]) > 1 and any(re.search(r"(?i)part\d", o["label"]) for o in members):
-            rows.append(gg.info("parts-" + gg.name_key(g), "Several parts", subtitle=PARTS_NOTE))
+        parts = part_members(members)
+        if parts and len(parts) <= gg.MAX_DOWNLOADS:
+            rows.append(
+                gg.button(
+                    "parts-" + gg.name_key(g),
+                    "Download all %d parts" % len(parts),
+                    gg.job("acquireParts", "Download %s" % (r.get("name") or ""), {"ref": {"site": site, "url": url}, "group": g}),
+                    subtitle=PARTS_NOTE,
+                )
+            )
+        elif parts:
+            rows.append(gg.info("parts-" + gg.name_key(g), "Several parts", subtitle=PARTS_TOO_MANY % len(parts)))
         for i, o in enumerate(members[:40]):
             if o["kind"] == "web":
                 action = gg.job("acquire", "Download %s" % (r.get("name") or ""), {"ref": {"site": site, "url": url}, "link": o["link"], "label": o["label"]})
@@ -445,7 +472,7 @@ def _acquire(args, report):
         download = gg.open_in_session(link)
     except gg.HostError as e:
         if e.code == "PERMISSION_DENIED":
-            return gg.failed("Allow \"Use your signed-in session\" for Repacks on its Permissions page: direct links open in droidtop's browser view through it")
+            return gg.failed(SESSION_DENIED)
         raise
     if download is None:
         return gg.failed("No download was started on that page")
@@ -458,10 +485,41 @@ def _handoff(args, report):
     title = str(args.get("title") or "Link")
     if not (uri.startswith("magnet:?xt=urn:btih:") or uri.startswith("https://") or uri.startswith("http://")):
         return gg.failed("Missing link")
-    if gg.hand_off(uri, title):
-        return gg.done("Opened in another app")
-    note = gg.TORRENT_NOTE if uri.startswith("magnet:") else "Open it in your browser."
-    return gg.done("Copy the link into the app", view=gg.handoff_fallback(title, uri, "This version of droidtop cannot open links in other apps yet. " + note))
+    if uri.startswith("magnet:"):
+        return gg.handoff_result(uri, title, "Opened in your torrent app", gg.TORRENT_NOTE + " Install one to open magnet links.")
+    return gg.handoff_result(uri, title, "Opened in your browser", "Open it in your browser.")
+
+
+@plugin.job("library.sources", "acquireParts")
+def _acquire_parts(args, report):
+    """Every part of one file host's split release as one acquire: each part's page opens in
+    droidtop's web view in turn, the person goes through it, and the captured downloads go
+    back together (`downloads`), marked to be joined and unpacked when they are one archive."""
+    ref = args.get("ref") or {}
+    url = str(ref.get("url") or "")
+    site = site_of_url(url)
+    group = str(args.get("group") or "")
+    if site is None or not group:
+        return gg.failed("Choose a file host first")
+    r = release(site, url) or {}
+    parts = part_members([o for o in r.get("options") or [] if o["group"] == group])
+    if not parts:
+        return gg.failed("That file host no longer lists the parts; open the release again")
+    if len(parts) > gg.MAX_DOWNLOADS:
+        return gg.failed(PARTS_TOO_MANY % len(parts))
+    downloads = []
+    for i, o in enumerate(parts, 1):
+        report(int((i - 1) * 100 / len(parts)), "Part %d of %d: go through %s's page" % (i, len(parts), group))
+        try:
+            download = gg.open_in_session(o["link"])
+        except gg.HostError as e:
+            if e.code == "PERMISSION_DENIED":
+                return gg.failed(SESSION_DENIED)
+            raise
+        if download is None:
+            return gg.failed("Part %d of %d started no download; nothing was downloaded. Try again, or download the parts one by one" % (i, len(parts)))
+        downloads.append(download)
+    return gg.downloads_result("Downloading %s (%d parts)" % (r.get("name") or "the release", len(parts)), downloads)
 
 
 # ------------------------------------------------------------------ library.updates (A6)

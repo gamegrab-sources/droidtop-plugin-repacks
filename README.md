@@ -28,8 +28,12 @@ DODI or ElAmigos.
 - **Settings**: FitGirl, DODI and ElAmigos on or off. A site turned off is not
   searched or checked.
 
-droidtop cannot yet open a link in another app; until it can, torrent and page
-links are shown for you to copy.
+Torrent and page links open through Android's chooser; when that is not
+possible (an older droidtop, the permission turned off, no app for the link)
+they are shown to copy, with the reason. **Download all parts** fetches a file
+host's numbered parts (up to 16) as one download into one folder: droidtop joins
+and unpacks .7z.001-style parts and places .partN.rar volumes together for an app
+that can unpack them.
 
 ## Permissions
 
@@ -37,6 +41,7 @@ links are shown for you to copy.
 - Use your signed-in session on those sites (droidtop's browser view, for direct
   links; nothing is signed in).
 - Notifications, and adding files to your game folders.
+- Open links in other apps (magnets to your torrent app, pages to your browser).
 
 It runs contained in droidtop (no network or files of its own).
 
