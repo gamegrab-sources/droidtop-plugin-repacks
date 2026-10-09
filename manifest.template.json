@@ -1,0 +1,74 @@
+{
+  "id": "gamegrab.repacks",
+  "origin": "gamegrab",
+  "label": "Repacks",
+  "description": "Unofficial plugin from gamegrab-sources, not part of droidtop and not affiliated with FitGirl, DODI or ElAmigos. Finds their releases, tells you when a release you linked to a game has a new version, hands torrents to a torrent app you have installed (droidtop has no torrent client) and downloads direct links into your game folders.",
+  "version": "0.1.0",
+  "kind": "python",
+  "contractVersion": 2,
+  "requestsRoot": false,
+  "abis": [],
+  "provides": [
+    {
+      "point": "library.sources",
+      "version": 1,
+      "id": "repacks",
+      "label": "Repacks"
+    },
+    {
+      "point": "library.updates",
+      "version": 1,
+      "id": "fitgirl",
+      "label": "FitGirl release",
+      "linkHint": "Release page link; blank unlinks"
+    },
+    {
+      "point": "library.updates",
+      "version": 1,
+      "id": "dodi",
+      "label": "DODI release",
+      "linkHint": "Release page link; blank unlinks"
+    },
+    {
+      "point": "library.updates",
+      "version": 1,
+      "id": "elamigos",
+      "label": "ElAmigos release",
+      "linkHint": "Release page link; blank unlinks"
+    },
+    {
+      "point": "ui.settings",
+      "version": 1,
+      "id": "main",
+      "target": "plugin"
+    }
+  ],
+  "permissions": [
+    {
+      "id": "net.domains",
+      "domains": [
+        "fitgirl-repacks.site",
+        "dodi-repacks.site",
+        "elamigos.site"
+      ],
+      "reason": "Reads the sites' search pages, release pages and release list"
+    },
+    {
+      "id": "web.session",
+      "domains": [
+        "fitgirl-repacks.site",
+        "dodi-repacks.site",
+        "elamigos.site"
+      ],
+      "reason": "Opens a release's direct links in droidtop's browser view, where you go through the file host's page, so the download it starts can run in droidtop's Downloads"
+    },
+    {
+      "id": "notify.post",
+      "reason": "Tells you when a release you linked to a game has a new version"
+    },
+    {
+      "id": "library.folders.write",
+      "reason": "Releases you download are placed in your game folder"
+    }
+  ]
+}
