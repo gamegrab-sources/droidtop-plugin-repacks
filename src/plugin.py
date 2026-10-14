@@ -120,7 +120,7 @@ def search_wordpress(site, query):
     def produce():
         answer = gg.http(url)
         if not answer.ok:
-            raise gg.HostError("FAILED", "%s answered HTTP %d" % (s["label"], answer.status))
+            raise gg.HostError("FAILED", gg.http_error(s["label"], answer.status))
         out = []
         for attrs, body in articles(answer.body):
             if "type-post" not in attrs or "category-updates-digest" in attrs:
@@ -230,7 +230,7 @@ def release(site, url):
         if answer.status == 404:
             return None
         if not answer.ok:
-            raise gg.HostError("FAILED", "%s answered HTTP %d" % (SITES[site]["label"], answer.status))
+            raise gg.HostError("FAILED", gg.http_error(SITES[site]["label"], answer.status))
         return parse_release(site, answer.body, url)
 
     return gg.cached("release-" + url, DETAIL_CACHE_S, produce)
@@ -348,20 +348,10 @@ def parse_elamigos(page, url):
     return {"title": title, "name": name, "version": version, "facts": facts, "options": options}
 
 
-WEB_NOTE = (
-    "Opens the file host's page in droidtop's browser view. Go through its page (and any link "
-    "check it shows) yourself; the download it starts runs in droidtop's Downloads into this game folder."
-)
-PARTS_NOTE = (
-    "This release comes in several parts. Download all parts opens each part's page in turn and runs them as one "
-    "download into one folder: droidtop joins and unpacks .7z.001-style parts, and places .partN.rar volumes "
-    "together for an app that can unpack them (droidtop cannot unpack split RAR files yet)."
-)
-SESSION_DENIED = (
-    'Allow "Use your signed-in session" for Repacks on its Permissions page: direct links open in '
-    "droidtop's browser view through it"
-)
-PARTS_TOO_MANY ="More parts than droidtop takes in one download (%d): download them one by one into the same folder."
+WEB_NOTE = "Opens the file host's page. The download it starts goes to Downloads."
+PARTS_NOTE = "Opens each part's page in turn and downloads the parts as one."
+SESSION_DENIED = 'Turn on "Use your signed-in session" in this plugin\'s Permissions to open direct links.'
+PARTS_TOO_MANY = "%d parts is more than one download takes. Download them one by one into the same folder."
 
 
 def part_members(members):
@@ -370,7 +360,7 @@ def part_members(members):
     if len(web) < 2 or not gg.is_split_set([o["label"] for o in web]):
         return []
     return sorted(web, key=lambda o: gg.split_part(o["label"])[1])
-PAGE_NOTE = "A file host page that gives a .torrent file: it opens in another app (your browser), and the .torrent goes to a torrent app from there."
+PAGE_NOTE = "Opens in your browser. Its .torrent file goes to your torrent app."
 
 
 def detail_view(site, url, r):
@@ -384,9 +374,9 @@ def detail_view(site, url, r):
     options = r.get("options") or []
     torrents = [o for o in options if o["kind"] == "magnet"]
     if torrents:
-        rows = [gg.info("torrent-note", "Torrents", subtitle=gg.TORRENT_NOTE)]
+        rows = []
         for i, o in enumerate(torrents):
-            rows.append(gg.button("magnet-%d" % i, o["label"], gg.job("handoff", "Open in a torrent app", {"uri": o["link"], "title": r.get("name") or ""}), subtitle="Open in a torrent app"))
+            rows.append(gg.button("magnet-%d" % i, o["label"], gg.job("handoff", "Open in a torrent app", {"uri": o["link"], "title": r.get("name") or ""}), subtitle=gg.TORRENT_NOTE))
         sections.append(gg.section("torrents", rows, "Torrent"))
     web = [o for o in options if o["kind"] in ("web", "page")]
     groups = []
@@ -427,7 +417,7 @@ def detail_view(site, url, r):
 @plugin.on("library.sources", "form")
 def _form(args):
     s = settings()
-    options = [("all", "All sites you turned on")] + [(k, v["label"]) for k, v in SITES.items() if s[k]]
+    options = [("all", "All sites")] + [(k, v["label"]) for k, v in SITES.items() if s[k]]
     return gg.ok(gg.view("Search repacks", [gg.text("query", "Search", ""), gg.choice("site", "Where", options, value="all")]))
 
 
@@ -467,7 +457,7 @@ def _acquire(args, report):
     r = release(site, url) or {}
     if link not in [o["link"] for o in r.get("options") or [] if o["kind"] == "web"]:
         return gg.failed("That link is no longer on the release page; open it again")
-    report(-1, "Opening %s in droidtop's browser view" % (urlparse(link).hostname or "the file host"))
+    report(-1, "Opening %s" % (urlparse(link).hostname or "the file host"))
     try:
         download = gg.open_in_session(link)
     except gg.HostError as e:
@@ -549,7 +539,7 @@ def page_title(source, slug):
     if answer.status in (404, 410):
         return None
     if not answer.ok:
-        raise gg.HostError("FAILED", "%s answered HTTP %d" % (SITES[source]["label"], answer.status))
+        raise gg.HostError("FAILED", gg.http_error(SITES[source]["label"], answer.status))
     title = _title(answer.body)
     name, version = (split_fitgirl if source == "fitgirl" else split_dodi)(title)
     return {"title": title, "name": name, "version": version}
@@ -642,11 +632,9 @@ def settings_view():
     return gg.view(
         "Repacks",
         [
-            gg.toggle("fitgirl", "FitGirl", s["fitgirl"], save, subtitle="fitgirl-repacks.site"),
-            gg.toggle("dodi", "DODI", s["dodi"], save, subtitle="dodi-repacks.site"),
-            gg.toggle("elamigos", "ElAmigos", s["elamigos"], save, subtitle="elamigos.site"),
-            gg.info("torrents", "Torrents", subtitle=gg.TORRENT_NOTE),
-            gg.info("direct", "Direct links", subtitle=WEB_NOTE),
+            gg.toggle("fitgirl", "FitGirl", s["fitgirl"], save),
+            gg.toggle("dodi", "DODI", s["dodi"], save),
+            gg.toggle("elamigos", "ElAmigos", s["elamigos"], save),
         ],
     )
 

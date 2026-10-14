@@ -3,6 +3,16 @@
 Every working build of `main` is a release (`v<version>-<CI run>`); the
 declared version moves with every change to the plugin's sources.
 
+## 0.3.0
+
+- Failures in plain words ("FitGirl is not answering right now") instead of
+  "answered HTTP 503".
+- Shorter text: one-line description (the catalog marks the plugin
+  Unofficial), one-line hints for direct links, parts and torrents, no note
+  rows in Settings.
+- Shared module 0.3.0 (contract 2.1 host names, needs droidtop
+  0.2.0-dev.1767 or newer; smaller data reads).
+
 ## 0.2.0
 
 - Torrents, release pages and DODI torrent-file pages open through
