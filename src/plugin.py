@@ -10,7 +10,7 @@ A python-kind plugin (droidtop docs/plugin-api.md 3):
   download it starts runs in droidtop's Downloads into the game folder.
 - `library.updates` (A6), one source per site: a game linked to a release page is checked
   for a newer version from that page's title.
-- `ui.settings`: a toggle per site.
+- `ui.facets` (droidtop plugin-api 1.10), target `settings.page`: a switch per site.
 
 It runs contained (5.3): requests go through droidtop's `net.http` and `net.download`
 (pages over 128 KiB), state through droidtop's data API, and it draws nothing itself.
@@ -626,33 +626,46 @@ def _check(args):
 # ------------------------------------------------------------------ settings (C)
 
 
-def settings_view():
+SETTINGS_TARGET = "settings.page"
+
+
+def settings_facets():
+    """The settings page (droidtop plugin-api 1.10, ui.facets target settings.page): a switch per site."""
     s = settings()
-    save = gg.call_action("save")
-    return gg.view(
-        "Repacks",
-        [
-            gg.toggle("fitgirl", "FitGirl", s["fitgirl"], save),
-            gg.toggle("dodi", "DODI", s["dodi"], save),
-            gg.toggle("elamigos", "ElAmigos", s["elamigos"], save),
-        ],
-    )
+    return {
+        "facets": [
+            {
+                "id": key,
+                "kind": "toggle",
+                "v": 1,
+                "targets": [SETTINGS_TARGET],
+                "label": site["label"],
+                "sub": "Search and check %s" % site["host"],
+                "value": s[key],
+                "call": {"op": "setSite", "args": {"site": key}},
+            }
+            for key, site in SITES.items()
+        ]
+    }
 
 
-@plugin.on("ui.settings", "view")
-def _settings(args):
-    return gg.ok(settings_view())
+@plugin.on("ui.facets", "get")
+def _facets(args):
+    if args.get("target") != SETTINGS_TARGET:
+        return gg.ok({"facets": []})
+    return gg.ok(settings_facets())
 
 
-@plugin.on("ui.settings", "save")
-def _save(args):
-    values = args.get("values") or {}
+@plugin.on("ui.facets", "setSite")
+def _set_site(args):
+    """One site's switch: droidtop sends the switch's new value as `value`."""
+    key = args.get("site")
+    if key not in SITES:
+        return gg.error("INVALID_ARGS", "Unknown site")
     s = settings()
-    for key in SITES:
-        if key in values:
-            s[key] = str(values[key]).lower() == "true"
+    s[key] = args.get("value") is True or str(args.get("value")).lower() == "true"
     gg.write_json(SETTINGS, s)
-    return gg.ok({"view": settings_view()})
+    return gg.ok(settings_facets())
 
 
 handle, start_job, cancel_job = plugin.entry_points()

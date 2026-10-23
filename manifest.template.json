@@ -3,7 +3,7 @@
   "origin": "gamegrab",
   "label": "Repacks",
   "description": "Finds FitGirl, DODI and ElAmigos releases, checks your linked games for new versions, and downloads them or opens their torrents.",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "kind": "python",
   "contractVersion": 2,
   "category": "sources",
@@ -39,10 +39,10 @@
       "linkHint": "Release page link; blank unlinks"
     },
     {
-      "point": "ui.settings",
+      "point": "ui.facets",
       "version": 1,
       "id": "main",
-      "target": "plugin"
+      "targets": ["settings.page"]
     }
   ],
   "permissions": [

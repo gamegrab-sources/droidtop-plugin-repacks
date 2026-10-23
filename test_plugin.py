@@ -110,7 +110,12 @@ class Repacks(unittest.TestCase):
         self.assertEqual(rows[1]["columns"], ["Update 1.4.2", "09.10.2026"])
 
     def test_site_toggles(self):
-        call("ui.settings", "save", {"values": {"fitgirl": "false", "elamigos": "false"}})
+        call("ui.facets", "setSite", {"site": "fitgirl", "value": False})
+        call("ui.facets", "setSite", {"site": "elamigos", "value": False})
+        toggles = call("ui.facets", "get", {"target": "settings.page"})["data"]["facets"]
+        self.assertEqual([(f["id"], f["value"]) for f in toggles], [("fitgirl", False), ("dodi", True), ("elamigos", False)])
+        self.assertEqual(call("ui.facets", "get", {"target": "quickmenu"})["data"]["facets"], [])
+        self.assertEqual(call("ui.facets", "setSite", {"site": "nope", "value": True})["error"]["code"], "INVALID_ARGS")
         call("library.sources", "search", {"query": "sample game"})
         self.assertEqual(self.host.requests(), ["https://dodi-repacks.site/?s=sample+game"])
 
@@ -211,7 +216,7 @@ class Built(unittest.TestCase):
         scope = {"__name__": "built"}
         exec(compile(source, "plugin.py", "exec"), scope)
         install(scope["gg"], FakeHost())
-        self.assertTrue(json.loads(scope["handle"](envelope("ui.settings", "view")))["ok"])
+        self.assertTrue(json.loads(scope["handle"](envelope("ui.facets", "get", {"target": "settings.page"})))["ok"])
 
 
 if __name__ == "__main__":

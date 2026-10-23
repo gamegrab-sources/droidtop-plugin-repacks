@@ -3,6 +3,11 @@
 Every working build of `main` is a release (`v<version>-<CI run>`); the
 declared version moves with every change to the plugin's sources.
 
+## 0.4.0
+
+- The settings are `settings.page` facets (droidtop docs/plugin-api.md 1.10) in place of the `ui.settings` view: a
+  switch per site, each saved on its own as it is turned (`setSite`, with droidtop's `value`).
+
 ## 0.3.2
 
 - Names its kind for droidtop's Plugins page (`category`, docs/plugin-api.md 1.2, Droidtop/tracker#179).
