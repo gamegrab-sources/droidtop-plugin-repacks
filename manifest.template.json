@@ -5,7 +5,7 @@
   "description": "Finds FitGirl, DODI and ElAmigos releases, checks your linked games for new versions, and downloads them or opens their torrents.",
   "version": "0.4.0",
   "kind": "python",
-  "contractVersion": 2,
+  "contractVersion": 3,
   "category": "sources",
   "requestsRoot": false,
   "abis": [],

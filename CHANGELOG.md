@@ -7,6 +7,9 @@ declared version moves with every change to the plugin's sources.
 
 - The settings are `settings.page` facets (droidtop docs/plugin-api.md 1.10) in place of the `ui.settings` view: a
   switch per site, each saved on its own as it is turned (`setSite`, with droidtop's `value`).
+- The manifest says `"contractVersion": 3`: it needs facets, so a droidtop built before them refuses this version
+  and keeps the one installed, rather than install a plugin whose settings it cannot draw (droidtop docs/plugin-api.md
+  7, "Contract 3").
 
 ## 0.3.2
 
