@@ -433,6 +433,23 @@ def _search(args):
     return gg.ok({"results": [result_row(r) for r in search(query, sites)]})
 
 
+# The platforms `featured` answers for: none named (Get new games' own page), PC and Windows, which these repacks are for.
+FEATURED_PLATFORMS = ("", "pc", "windows")
+
+
+@plugin.on("library.sources", "featured")
+def _featured(args):
+    """ElAmigos' newest releases, as its home page lists them (droidtop docs/plugin-api.md 1.8, Droidtop/tracker#612),
+    for Get new games. FitGirl and DODI are not listed here: only ElAmigos' list is one this plugin already reads."""
+    if str(args.get("platform") or "").strip() not in FEATURED_PLATFORMS or not settings()["elamigos"]:
+        return gg.ok({"results": []})
+    try:
+        limit = max(1, min(int(args.get("limit") or 20), 60))
+    except (TypeError, ValueError):
+        limit = 20
+    return gg.ok({"results": [result_row(dict(r, size=None)) for r in elamigos_list()[:limit]]})
+
+
 @plugin.on("library.sources", "detail")
 def _detail(args):
     ref = args.get("ref") or {}

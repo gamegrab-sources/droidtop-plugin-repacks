@@ -109,6 +109,14 @@ class Repacks(unittest.TestCase):
         self.assertEqual(rows[0]["columns"], ["v1.0.2", "1.6 GB"])
         self.assertEqual(rows[1]["columns"], ["Update 1.4.2", "09.10.2026"])
 
+    def test_featured_is_elamigos_newest_first(self):
+        rows = call("library.sources", "featured", {"limit": 2})["data"]["results"]
+        self.assertEqual([r["title"] for r in rows], ["Sample Game Deluxe Edition", "Another Title"])
+        self.assertEqual(rows[0]["badges"], ["ElAmigos"])
+        self.assertEqual(call("library.sources", "featured", {"platform": "snes", "limit": 2})["data"]["results"], [])
+        call("ui.facets", "setSite", {"site": "elamigos", "value": False})
+        self.assertEqual(call("library.sources", "featured", {"limit": 2})["data"]["results"], [])
+
     def test_site_toggles(self):
         call("ui.facets", "setSite", {"site": "fitgirl", "value": False})
         call("ui.facets", "setSite", {"site": "elamigos", "value": False})

@@ -3,6 +3,12 @@
 Every working build of `main` is a release (`v<version>-<CI run>`); the
 declared version moves with every change to the plugin's sources.
 
+## 0.5.0
+
+- `featured` (droidtop docs/plugin-api.md 1.8, Droidtop/tracker#612): ElAmigos' newest releases, in the order its
+  home page lists them, at most the `limit` droidtop asks for (up to 60), for droidtop's Get new games page, while
+  ElAmigos is turned on. FitGirl and DODI are not listed there yet. A console's page gets none.
+
 ## 0.4.1
 
 - The release of 0.4.0's facets and contract 3 changes. 0.4.0's two commits shared one declared version, so CI's version rule refused the second
