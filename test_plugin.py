@@ -63,12 +63,36 @@ EA_GAME = """<html><body><h2>Sample Game Deluxe Edition (2026), 1.28GB</h2>
 <h2>RAPIDGATOR</h2><h3><a href="https://linkcheck.example/Container/2.html">https://linkcheck.example/Container/2.html</a></h3>
 </body></html>"""
 
+FG_HOME = """<main>
+<article id="post-9" class="post-9 post type-post status-publish category-uncategorized">
+<h1 class="entry-title"><a href="https://fitgirl-repacks.site/upcoming-repacks-10/">Upcoming Repacks</a></h1></article>
+<article id="post-8" class="post-8 post type-post status-publish category-updates-digest">
+<h1 class="entry-title"><a href="https://fitgirl-repacks.site/updates-digest-for-may-2/">Updates Digest for May 2</a></h1></article>
+<article id="post-7" class="post-7 post type-post status-publish category-lossless-repack">
+<h1 class="entry-title"><a href="https://fitgirl-repacks.site/new-game/">New Game &#8211; v2.0</a></h1>
+<div class="entry-content"><p>Repack Size: <strong>3 GB</strong></p></div></article>
+<article id="post-6" class="post-6 post type-post status-publish category-lossless-repack">
+<h1 class="entry-title"><a href="https://fitgirl-repacks.site/older-game/">Older Game &#8211; v1.1</a></h1></article>
+</main>"""
+
+DODI_HOME = """<main>
+<article id="post-5" class="post-5 post type-post status-publish sticky category-uncategorized">
+<header class="entry-header"><h3 class="entry-title"><a href="https://dodi-repacks.site/upcoming-repacks/">Upcoming Repacks</a></h3></header></article>
+<article id="post-4" class="post-4 post type-post status-publish category-uncategorized">
+<header class="entry-header"><h3 class="entry-title"><a href="https://dodi-repacks.site/dodi-game/">2244- Dodi Game (v1.11 + All DLCs + MULTi14) (From 43.4 GB) [DODI Repack]</a></h3></header>
+<div class="entry-content"><p><strong>Repack Size</strong> : From 43.4 GB</p></div></article>
+<article id="post-3" class="post-3 post type-post status-publish category-uncategorized">
+<header class="entry-header"><h3 class="entry-title"><a href="https://dodi-repacks.site/new-repack-team/">New Repack Team</a></h3></header></article>
+</main>"""
+
 PAGES = {
     "https://fitgirl-repacks.site/?s=sample+game": FG_SEARCH,
     "https://fitgirl-repacks.site/sample-game/": FG_POST,
     "https://dodi-repacks.site/?s=sample+game": "<main></main>",
     "https://dodi-repacks.site/sample-game/": DODI_POST,
     "https://elamigos.site/": EA_HOME,
+    "https://fitgirl-repacks.site/": FG_HOME,
+    "https://dodi-repacks.site/": DODI_HOME,
     "https://elamigos.site/data/Sample_Game_Deluxe_Edition_MULTi15_-_ElAmigos.html": EA_GAME,
 }
 
@@ -109,13 +133,33 @@ class Repacks(unittest.TestCase):
         self.assertEqual(rows[0]["columns"], ["v1.0.2", "1.6 GB"])
         self.assertEqual(rows[1]["columns"], ["Update 1.4.2", "09.10.2026"])
 
-    def test_featured_is_elamigos_newest_first(self):
-        rows = call("library.sources", "featured", {"limit": 2})["data"]["results"]
-        self.assertEqual([r["title"] for r in rows], ["Sample Game Deluxe Edition", "Another Title"])
-        self.assertEqual(rows[0]["badges"], ["ElAmigos"])
+    def test_featured_takes_each_site_newest_first_in_turn(self):
+        rows = call("library.sources", "featured", {"limit": 10})["data"]["results"]
+        self.assertEqual(
+            [(r["badges"][0], r["title"]) for r in rows],
+            [
+                ("FitGirl", "New Game"),
+                ("DODI", "Dodi Game"),
+                ("ElAmigos", "Sample Game Deluxe Edition"),
+                ("FitGirl", "Older Game"),
+                ("ElAmigos", "Another Title"),
+                ("ElAmigos", "Old Game"),
+            ],
+        )
+        self.assertEqual(rows[0]["columns"], ["v2.0", "3 GB"])
+        self.assertEqual(rows[1]["columns"], ["v1.11", "From 43.4 GB"])
+        self.assertEqual(len(call("library.sources", "featured", {"limit": 2})["data"]["results"]), 2)
         self.assertEqual(call("library.sources", "featured", {"platform": "snes", "limit": 2})["data"]["results"], [])
+        call("ui.facets", "setSite", {"site": "fitgirl", "value": False})
+        call("ui.facets", "setSite", {"site": "dodi", "value": False})
+        self.assertEqual([r["badges"][0] for r in call("library.sources", "featured", {"limit": 2})["data"]["results"]], ["ElAmigos", "ElAmigos"])
         call("ui.facets", "setSite", {"site": "elamigos", "value": False})
         self.assertEqual(call("library.sources", "featured", {"limit": 2})["data"]["results"], [])
+
+    def test_featured_leaves_out_a_site_it_cannot_read(self):
+        del self.host.pages["https://dodi-repacks.site/"]
+        rows = call("library.sources", "featured", {"limit": 3})["data"]["results"]
+        self.assertEqual([r["badges"][0] for r in rows], ["FitGirl", "ElAmigos", "FitGirl"])
 
     def test_site_toggles(self):
         call("ui.facets", "setSite", {"site": "fitgirl", "value": False})

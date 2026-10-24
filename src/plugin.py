@@ -33,6 +33,7 @@ STATE = "state.json"
 SEARCH_CACHE_S = 30 * 60
 DETAIL_CACHE_S = 12 * 3600
 ELAMIGOS_LIST_CACHE_S = 6 * 3600
+NEWEST_CACHE_S = 6 * 3600
 CHECK_BUDGET_S = 90
 MAX_RESULTS_PER_SITE = 30
 
@@ -121,30 +122,56 @@ def search_wordpress(site, query):
         answer = gg.http(url)
         if not answer.ok:
             raise gg.HostError("FAILED", gg.http_error(s["label"], answer.status))
-        out = []
-        for attrs, body in articles(answer.body):
-            if "type-post" not in attrs or "category-updates-digest" in attrs:
-                continue
-            m = re.search(r'(?is)<h[12] class="entry-title"[^>]*>\s*<a href="([^"]+)"[^>]*>(.*?)</a>', body)
-            if not m:
-                continue
-            title = gg.one_line(m.group(2))
-            name, version = (split_fitgirl if site == "fitgirl" else split_dodi)(title)
-            summary = gg.strip_tags(body)
-            out.append(
-                {
-                    "site": site,
-                    "id": slug_of(m.group(1)),
-                    "url": m.group(1),
-                    "title": title,
-                    "name": name,
-                    "version": version,
-                    "size": size_from(summary, "Repack Size"),
-                }
-            )
-        return out
+        return parse_wordpress_list(site, answer.body)
 
     return gg.cached("search-" + url, SEARCH_CACHE_S, produce)
+
+
+def parse_wordpress_list(site, page):
+    """The releases a FitGirl or DODI list page shows (a search, or the home page's newest), newest first, from each
+    post's `entry-title`. A pinned post, an updates digest, the "Upcoming Repacks" page and a DODI post that is not a
+    repack (a site notice) are left out."""
+    out = []
+    for attrs, body in articles(page):
+        if "type-post" not in attrs or "category-updates-digest" in attrs or re.search(r"\bsticky\b", attrs):
+            continue
+        # An h1 or h2 on a search, an h3 on DODI's home page.
+        m = re.search(r'(?is)<h[1-3] class="entry-title"[^>]*>\s*<a href="([^"]+)"[^>]*>(.*?)</a>', body)
+        if not m:
+            continue
+        url, title = m.group(1), gg.one_line(m.group(2))
+        if site == "dodi" and "[dodi repack]" not in title.lower():
+            continue
+        if slug_of(url).startswith("upcoming-repacks"):
+            continue
+        name, version = (split_fitgirl if site == "fitgirl" else split_dodi)(title)
+        out.append(
+            {
+                "site": site,
+                "id": slug_of(url),
+                "url": url,
+                "title": title,
+                "name": name,
+                "version": version,
+                "size": size_from(gg.strip_tags(body), "Repack Size"),
+            }
+        )
+    return out
+
+
+def newest_wordpress(site):
+    """FitGirl's or DODI's newest releases, as its home page lists them. The page is bigger than one answer, so
+    get_page fetches it whole."""
+    s = SITES[site]
+    url = "https://%s/" % s["host"]
+
+    def produce():
+        answer = gg.get_page(url, "scratch-%s.html" % site)
+        if not answer.ok:
+            raise gg.HostError("FAILED", gg.http_error(s["label"], answer.status))
+        return parse_wordpress_list(site, answer.body)
+
+    return gg.cached("newest-" + site, NEWEST_CACHE_S, produce)
 
 
 def slug_of(url):
@@ -439,15 +466,29 @@ FEATURED_PLATFORMS = ("", "pc", "windows")
 
 @plugin.on("library.sources", "featured")
 def _featured(args):
-    """ElAmigos' newest releases, as its home page lists them (droidtop docs/plugin-api.md 1.8, Droidtop/tracker#612),
-    for Get new games. FitGirl and DODI are not listed here: only ElAmigos' list is one this plugin already reads."""
-    if str(args.get("platform") or "").strip() not in FEATURED_PLATFORMS or not settings()["elamigos"]:
+    """The newest releases of each site turned on, as their home pages list them (droidtop docs/plugin-api.md 1.8,
+    Droidtop/tracker#612), for Get new games: FitGirl's, DODI's and ElAmigos', taken in turn so each site shows near
+    the top, newest first within each. A site that cannot be read now is left out; with none read, its error."""
+    s = settings()
+    sites = [k for k in SITES if s[k]]
+    if str(args.get("platform") or "").strip() not in FEATURED_PLATFORMS or not sites:
         return gg.ok({"results": []})
     try:
         limit = max(1, min(int(args.get("limit") or 20), 60))
     except (TypeError, ValueError):
         limit = 20
-    return gg.ok({"results": [result_row(dict(r, size=None)) for r in elamigos_list()[:limit]]})
+    lists, failures = [], []
+    for site in sites:
+        try:
+            lists.append(elamigos_list() if site == "elamigos" else newest_wordpress(site))
+        except gg.HostError as e:
+            failures.append(e)
+    if failures and not lists:
+        raise failures[0]
+    rows = []
+    for turn in range(max((len(l) for l in lists), default=0)):
+        rows.extend(l[turn] for l in lists if turn < len(l))
+    return gg.ok({"results": [result_row(r) for r in rows[:limit]]})
 
 
 @plugin.on("library.sources", "detail")

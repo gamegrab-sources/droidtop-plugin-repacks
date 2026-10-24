@@ -9,6 +9,8 @@ DODI or ElAmigos.
 - **Get games** (droidtop's `library.sources`): searches the sites you turned on,
   from FitGirl's and DODI's own search pages and ElAmigos' release list (read once
   every 6 hours). Results show the site, the version and the size.
+- **Get new games** (droidtop's `featured`): the newest releases of the sites you
+  turned on, from their home pages (read once every 6 hours), each site in turn.
 - **A release** shows what its page says (version, sizes, company, languages) and
   its download options:
   - **Torrents** (magnet links): droidtop has no torrent client, so **Open in a
@@ -26,7 +28,7 @@ DODI or ElAmigos.
   most one page every 2 seconds per site); a notification says when a linked
   release has a new version.
 - **Settings**: FitGirl, DODI and ElAmigos on or off. A site turned off is not
-  searched or checked.
+  searched, listed or checked.
 
 Torrent and page links open through Android's chooser; when that is not
 possible (an older droidtop, the permission turned off, no app for the link)

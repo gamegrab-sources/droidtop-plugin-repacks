@@ -3,6 +3,15 @@
 Every working build of `main` is a release (`v<version>-<CI run>`); the
 declared version moves with every change to the plugin's sources.
 
+## 0.6.0
+
+- `featured` lists FitGirl's and DODI's newest releases too, from their home pages, beside ElAmigos': taken from each
+  site turned on in turn, newest first within each, so every site shows near the top of droidtop's Get new games. A
+  pinned post, an updates digest, the "Upcoming Repacks" page and a DODI site notice are left out; a site that cannot
+  be read now is left out, and only with none read does `featured` fail. The home pages are bigger than one answer, so
+  they come through `net.download` when cut (Droidtop/tracker#612).
+- DODI's list pages are read by their `entry-title` on an h3 too, as DODI's home page has it.
+
 ## 0.5.0
 
 - `featured` (droidtop docs/plugin-api.md 1.8, Droidtop/tracker#612): ElAmigos' newest releases, in the order its
