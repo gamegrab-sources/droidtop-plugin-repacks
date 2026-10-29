@@ -10,7 +10,9 @@ A python-kind plugin (droidtop docs/plugin-api.md 3):
   download it starts runs in droidtop's Downloads into the game folder.
 - `library.updates` (A6), one source per site: a game linked to a release page is checked
   for a newer version from that page's title.
-- `ui.facets` (droidtop plugin-api 1.10), target `settings.page`: a switch per site.
+- `ui.facets` (droidtop plugin-api 1.10): `settings.page`, a switch per site; `search.filter`, where to search, kept by
+  droidtop between searches; `item.page`, a linked release's record page (name and version, facts, its page, its
+  file-host links, a split release as one parts row).
 
 It runs contained (5.3): requests go through droidtop's `net.http` and `net.download`
 (pages over 128 KiB), state through droidtop's data API, and it draws nothing itself.
@@ -441,13 +443,6 @@ def detail_view(site, url, r):
 # ------------------------------------------------------------------ library.sources (A2)
 
 
-@plugin.on("library.sources", "form")
-def _form(args):
-    s = settings()
-    options = [("all", "All sites")] + [(k, v["label"]) for k, v in SITES.items() if s[k]]
-    return gg.ok(gg.view("Search repacks", [gg.text("query", "Search", ""), gg.choice("site", "Where", options, value="all")]))
-
-
 @plugin.on("library.sources", "search")
 def _search(args):
     values = args.get("values") or {}
@@ -455,7 +450,9 @@ def _search(args):
     if not gg.words(query):
         return gg.ok({"results": []})
     s = settings()
-    which = values.get("site") or "all"
+    # Where to search is one of this source's search options (search.filter), kept by droidtop and sent as `filters`;
+    # an older droidtop's form sent it in `values`.
+    which = (args.get("filters") or {}).get("site") or values.get("site") or "all"
     sites = [k for k in SITES if s[k] and (which == "all" or k == which)]
     return gg.ok({"results": [result_row(r) for r in search(query, sites)]})
 
@@ -685,6 +682,62 @@ def _check(args):
 
 
 SETTINGS_TARGET = "settings.page"
+FILTER_TARGET = "search.filter"
+ITEM_PAGE = "item.page"
+MAX_PARTS = 100
+
+
+def filter_facets():
+    """This source's search options in droidtop's one search (search.filter): where to search."""
+    options = [{"value": "all", "label": "All sites"}] + [{"value": k, "label": v["label"]} for k, v in SITES.items()]
+    return {"facets": [{"id": "site", "kind": "choice", "v": 1, "targets": [FILTER_TARGET], "label": "Where", "options": options, "value": "all"}]}
+
+
+def item_facets(site, url, r):
+    """A linked release as droidtop's record page draws it (item.page bundles, droidtop plugin-api 1.10): its name and
+    version (the version names the new version folder), its facts, its page, and its file-host links. A file host's
+    split release is one `parts` entry, fetched as one Downloads job and unpacked together. Magnets and .torrent pages
+    stay on the release page: the record page fetches files into the game's folder, and a torrent is not the game."""
+    facets = [{"id": "meta", "kind": "metadata", "v": 1, "title": r.get("name") or r.get("title")}]
+    if r.get("version"):
+        facets[0]["version"] = r["version"]
+    facts = ["%s: %s" % (label, gg.cut(value, 200)) for label, value in r.get("facts") or []]
+    if facts:
+        facets.append({"id": "about", "kind": "description", "v": 1, "overview": "\n".join(facts)})
+    facets.append({"id": "links", "kind": "links", "v": 1, "entries": [{"kind": "source", "label": "%s release page" % SITES[site]["label"], "url": url}]})
+    entries = []
+    web = [o for o in r.get("options") or [] if o["kind"] == "web"]
+    groups = []
+    for o in web:
+        if o["group"] not in groups:
+            groups.append(o["group"])
+    for g in groups:
+        members = [o for o in web if o["group"] == g]
+        parts = part_members(members)
+        if parts and len(parts) <= MAX_PARTS:
+            entries.append({
+                "section": g, "host": g, "label": "All %d parts" % len(parts), "kind": "page",
+                "parts": [{"label": o["label"], "url": o["link"]} for o in parts],
+            })
+        for o in members[:40]:
+            entries.append({"section": g, "host": g, "label": gg.cut(o["label"], 60), "url": o["link"], "kind": "page"})
+    if entries:
+        facets.append({"id": "downloads", "kind": "download", "v": 1, "entries": entries[:200]})
+    return {"facets": facets}
+
+
+def _item_page(args):
+    subject = args.get("subject") or {}
+    source = subject.get("source")
+    if source not in SITES:
+        return gg.error("INVALID_ARGS", "Unknown source")
+    rid, url = parse_release_id(source, str(subject.get("id") or ""))
+    if rid is None:
+        return gg.error("INVALID_ARGS", "Missing release")
+    r = release(source, url)
+    if r is None:
+        return gg.error("NOT_FOUND", "That release page is gone")
+    return gg.ok(item_facets(source, url, r))
 
 
 def settings_facets():
@@ -709,9 +762,14 @@ def settings_facets():
 
 @plugin.on("ui.facets", "get")
 def _facets(args):
-    if args.get("target") != SETTINGS_TARGET:
-        return gg.ok({"facets": []})
-    return gg.ok(settings_facets())
+    target = args.get("target")
+    if target == SETTINGS_TARGET:
+        return gg.ok(settings_facets())
+    if target == FILTER_TARGET:
+        return gg.ok(filter_facets())
+    if target == ITEM_PAGE:
+        return _item_page(args)
+    return gg.ok({"facets": []})
 
 
 @plugin.on("ui.facets", "setSite")

@@ -3,6 +3,16 @@
 Every working build of `main` is a release (`v<version>-<CI run>`); the
 declared version moves with every change to the plugin's sources.
 
+## 0.7.0
+
+- Search options instead of a search form (droidtop docs/plugin-api.md 1.10, `search.filter`, Droidtop/tracker#602):
+  "Where" is a search option droidtop keeps and sends with each search as `filters.site`. The `form` op is gone; a
+  `values.site` from an older droidtop is still read.
+- A linked release has a record page (`item.page`): its name and version, its facts, the release page, and its
+  file-host links, a file host's split release as one row ("All N parts") that droidtop fetches as one Downloads job
+  and unpacks together. Magnets and .torrent pages stay on the result's own page. Needs a droidtop with download
+  `parts` (and, for RAR parts, Droidtop/droidtop ci/parts-rar-volumes).
+
 ## 0.6.0
 
 - `featured` lists FitGirl's and DODI's newest releases too, from their home pages, beside ElAmigos': taken from each

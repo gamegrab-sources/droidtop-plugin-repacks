@@ -258,6 +258,30 @@ class Repacks(unittest.TestCase):
         self.assertEqual(c[0]["id"], "Sample_Game_Deluxe_Edition_MULTi15_-_ElAmigos.html")
 
 
+    def test_where_to_search_is_a_search_option(self):
+        facets = call("ui.facets", "get", {"target": "search.filter"})["data"]["facets"]
+        self.assertEqual(["all", "fitgirl", "dodi", "elamigos"], [o["value"] for o in facets[0]["options"]])
+        self.assertEqual("UNSUPPORTED", call("library.sources", "form")["error"]["code"])
+        call("library.sources", "search", {"query": "sample game", "filters": {"site": "dodi"}})
+        self.assertEqual(self.host.requests(), ["https://dodi-repacks.site/?s=sample+game"])
+
+    def test_a_linked_release_is_its_record_page(self):
+        subject = {"type": "item", "source": "fitgirl", "id": "sample-game"}
+        facets = {f["id"]: f for f in call("ui.facets", "get", {"target": "item.page", "subject": subject})["data"]["facets"]}
+        self.assertEqual(("Sample Game", "v1.0.2"), (facets["meta"]["title"], facets["meta"]["version"].split(" ")[0]))
+        self.assertIn("Repack Size: 1.6 GB", facets["about"]["overview"])
+        self.assertEqual("https://fitgirl-repacks.site/sample-game/", facets["links"]["entries"][0]["url"])
+        entries = facets["downloads"]["entries"]
+        # The split release is one parts row, then its parts one by one; no magnet or .torrent page.
+        self.assertEqual("All 2 parts", entries[0]["label"])
+        self.assertEqual(["Sample_Game.part1.rar", "Sample_Game.part2.rar"], [p["label"] for p in entries[0]["parts"]])
+        self.assertEqual(["https://fasthost.example/a1#Sample_Game.part1.rar", "https://fasthost.example/a2#Sample_Game.part2.rar"], [e["url"] for e in entries[1:]])
+        self.assertFalse([e for e in entries if "magnet" in str(e) or "paste.fitgirl" in str(e)])
+        gone = dict(subject, id="no-such-game")
+        self.host.pages["https://fitgirl-repacks.site/no-such-game/"] = (404, "gone")
+        self.assertEqual("NOT_FOUND", call("ui.facets", "get", {"target": "item.page", "subject": gone})["error"]["code"])
+
+
 class Built(unittest.TestCase):
     def test_built_plugin_loads(self):
         built = os.path.join(HERE, "build", "plugin.py")
